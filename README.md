@@ -1,2 +1,2 @@
 # ESP32Library-SimplePCA9685
-Arduino library for PCF8574 - I2C IO expander
+Simple library API for the PCA9685 PWM Board module to control servos. Made for the Esp32 with Arduino as component.

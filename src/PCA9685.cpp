@@ -6,8 +6,9 @@
 *	@param wire	   the I2C Wire object instance
 */
 PCA9685::PCA9685(const uint8_t address, TwoWire *wire){
-    _address       = address;
-    _wire          = wire;
+    _address  = address;
+    _wire     = wire;
+    _lastTime = 0;
     memset(_prevAngles, 0, sizeof(_prevAngles)); // Set all prev angles values to 0
 }
 
@@ -71,18 +72,24 @@ void PCA9685::setServoAngle(int channel, int angle) {
 }
 
 /*!
-*	@brief Method that moves a servo to the selected angle in a smooth manner (this method must be called frequently at a fixed interval)
+*	@brief Method that moves a servo to the selected angle in a smooth manner (must be called every loop)
 *	@param channel The channel to which the servo is attached on
 *	@param angle   The angle value to move the selected servo to
 *	@return returns the current smooth angle position it's setting at
 */
 float PCA9685::setSmoothAngle(int channel, float angle){
-    float smoothAngle = (angle * 0.1) + (_prevAngles[channel] * 0.9);
-    _prevAngles[channel] = smoothAngle;
+    uint32_t currentTime = millis();
 
-    setServoAngle(channel, smoothAngle);  
+    if (currentTime - _lastTime >= 10){
+        _lastTime = currentTime;
 
-    return smoothAngle;
+        float smoothAngle = (angle * 0.1) + (_prevAngles[channel] * 0.9);
+        _prevAngles[channel] = smoothAngle;
+
+        setServoAngle(channel, smoothAngle);  
+    }
+    
+    return _prevAngles[channel];
 }
 
 /*!

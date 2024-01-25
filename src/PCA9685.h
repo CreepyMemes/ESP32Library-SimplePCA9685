@@ -49,4 +49,5 @@ class PCA9685 {
         float    _prevAngles[16]; // Array that stores the previous angle position of each channel
         uint8_t  _address;        // The I2C device's address
         TwoWire* _wire;           // Pointer to the I2C bus interface
+        uint32_t _lastTime;       // The last time the function millis() has ben called here ( used to update setSmoothAngle() )
 };

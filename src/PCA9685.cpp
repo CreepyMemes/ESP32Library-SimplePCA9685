@@ -10,6 +10,8 @@ PCA9685::PCA9685(const uint8_t address, TwoWire *wire){
     _wire     = wire;
     _lastTime = 0;
     memset(_prevAngles, 0, sizeof(_prevAngles)); // Set all prev angles values to 0
+    memset(_running,    0, sizeof(_running));    // Set all channels as not running
+    memset(_angles,     0, sizeof(_angles));     // Set all default angles to 0
 }
 
 /*!
@@ -45,11 +47,45 @@ void PCA9685::setPWMFrequency(float pwmFrequency) {
 }
 
 /*!
+*	@brief Method sets the desired position for each servo channel to be moved smoothly by the loop function
+*	@param channel The channel to which the servo is attached on
+*	@param angle   The final angle value to move the selected servo to
+*/
+void PCA9685::setServoAngle(uint8_t channel, float angle){
+    _angles[channel]  = angle;
+    _running[channel] = true;
+}
+
+/*!
+*	@brief Main loop method that moves each servo channel smoothly to the set position ( must be called every loop, it executes every 10ms )
+*/
+void PCA9685::loop(){
+    uint32_t currentTime = millis();
+
+    if (currentTime - _lastTime >= 10){
+        _lastTime = currentTime;
+
+        for(int channel = 0; channel < 16; channel++){
+            if(!_running[channel]) continue;
+
+            float smoothAngle = (_angles[channel] * 0.1) + (_prevAngles[channel] * 0.9);
+            _prevAngles[channel] = smoothAngle;
+
+            moveServoAngle(channel, smoothAngle);  
+
+            if(fabs(_angles[channel] - _prevAngles[channel]) < 0.001){ // Just to compare float values as "==" is unreliable
+                _running[channel] = false;
+            }
+        }
+    }
+}
+
+/*!
 *	@brief Method that sets a PWM value to a selected channel (0 to 15)
 *	@param channel The channel to be affected
 *	@param pwmAmount The PWM value to be set
 */
-void PCA9685::setChannelPWM(int channel, uint16_t pwmAmount) {
+void PCA9685::setChannelPWM(uint8_t channel, uint16_t pwmAmount) {
     if (channel < 0 || channel > 15) return;
 
     _wire->beginTransmission(_address);
@@ -63,33 +99,12 @@ void PCA9685::setChannelPWM(int channel, uint16_t pwmAmount) {
 }
 
 /*!
-*	@brief Method that sets an angle to a selected channel (used for servos with pwm: min = 115 / max = 545)
+*	@brief Method that moves the selected servo channel to the given angle position instantly (used for servos with pwm: min = 115 / max = 545)
 *	@param channel The channel to be affected
 *	@param angle   The angle value to be set
 */
-void PCA9685::setServoAngle(int channel, int angle) {
+void PCA9685::moveServoAngle(uint8_t channel, float angle) {
     setChannelPWM(channel, map(angle, -90, 90, 115, 545));
-}
-
-/*!
-*	@brief Method that moves a servo to the selected angle in a smooth manner (must be called every loop)
-*	@param channel The channel to which the servo is attached on
-*	@param angle   The angle value to move the selected servo to
-*	@return returns the current smooth angle position it's setting at
-*/
-float PCA9685::setSmoothAngle(int channel, float angle){
-    uint32_t currentTime = millis();
-
-    if (currentTime - _lastTime >= 10){
-        _lastTime = currentTime;
-
-        float smoothAngle = (angle * 0.1) + (_prevAngles[channel] * 0.9);
-        _prevAngles[channel] = smoothAngle;
-
-        setServoAngle(channel, smoothAngle);  
-    }
-    
-    return _prevAngles[channel];
 }
 
 /*!
@@ -97,7 +112,7 @@ float PCA9685::setSmoothAngle(int channel, float angle){
 *	@param channel The channel to be affected
 *	@return PWM value is: 0 -> 4096 (0 full off / 4096 full on)
 */
-uint16_t PCA9685::getChannelPWM(int channel) {
+uint16_t PCA9685::getChannelPWM(uint8_t channel) {
     if (channel < 0 || channel > 15) return 0;
 
     byte regAddress = PCA9685_LED0_REG + (channel << 2);
@@ -125,6 +140,24 @@ uint16_t PCA9685::getChannelPWM(int channel) {
     else                                     retVal = (phaseEnd + PCA9685_PWM_FULL) - phaseBegin; // span cycles (Section 7.3.3 example 2)
 
     return retVal;
+}
+
+/*!
+*	@brief Quick method to check the current position of a channel on an ongoing smooth movement by loop()
+*	@param channel The channel to be affected
+*	@return returns the current position angle of a channel (float value)
+*/
+float PCA9685::getCurrentAngle(uint8_t channel){
+    return _prevAngles[channel];
+}
+
+/*!
+*	@brief Quick method to check if the selected channel is going through a smooth movement by loop()
+*	@param channel The channel to be affected
+*	@return returns true if moving / false if not
+*/
+bool PCA9685::isRunning(uint8_t channel){
+    return _running[channel];
 }
 
 // ---------------------------------------------------- P R I V A T E S --------------------------------------------------------------
@@ -159,7 +192,7 @@ void PCA9685::reset() {
 *	@param phaseBegin The pointer that will store the output phase begin value
 *	@param phaseEnd   The pointer that will store the output phase end value
 */
-void PCA9685::getPhaseCycle(int channel, uint16_t pwmAmount, uint16_t *phaseBegin, uint16_t *phaseEnd){  
+void PCA9685::getPhaseCycle(uint8_t channel, uint16_t pwmAmount, uint16_t *phaseBegin, uint16_t *phaseEnd){  
     *phaseBegin = 0;
     
     // See datasheet section 7.3.3

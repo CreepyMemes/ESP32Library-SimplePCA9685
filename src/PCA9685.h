@@ -31,23 +31,30 @@ class PCA9685 {
         bool     begin();
 
         void     setPWMFrequency(float pwmFrequency);
-        void     setChannelPWM(int channel, uint16_t pwmAmount);
-        void     setServoAngle(int channel, int angle);
-        float    setSmoothAngle(int channel, float angle);
+        void     setServoAngle(uint8_t channel, float angle);
+        void     loop();
 
-        uint16_t getChannelPWM(int channel); 
+        void     setChannelPWM(uint8_t channel, uint16_t pwmAmount);
+        void     moveServoAngle(uint8_t channel, float angle);
+
+        uint16_t getChannelPWM(uint8_t channel); 
+        float    getCurrentAngle(uint8_t channel);
+        bool     isRunning(uint8_t channel);
 
     private:
         bool 	 isConnected(); 
         void     reset();
 
-        void     getPhaseCycle(int channel, uint16_t pwmAmount, uint16_t *phaseBegin, uint16_t *phaseEnd);
+        void     getPhaseCycle(uint8_t channel, uint16_t pwmAmount, uint16_t *phaseBegin, uint16_t *phaseEnd);
         void     writeChannelPWM(uint16_t phaseBegin, uint16_t phaseEnd);
         void     writeRegister(byte regAddress, byte value);
         byte     readRegister(byte regAddress);
 
-        float    _prevAngles[16]; // Array that stores the previous angle position of each channel
+        float    _prevAngles[16]; // Array that stores the previous angle positions of each channel
+        float    _angles[16];     // Array that stores the final angle positions of each servo channel
+        bool     _running[16];    // Array that stores whether each channel is currently moving
+        uint32_t _lastTime;       // The last time the function millis() has ben called here ( used to update setSmoothAngle() )
+        
         uint8_t  _address;        // The I2C device's address
         TwoWire* _wire;           // Pointer to the I2C bus interface
-        uint32_t _lastTime;       // The last time the function millis() has ben called here ( used to update setSmoothAngle() )
 };

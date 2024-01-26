@@ -86,7 +86,7 @@ void PCA9685::loop(){
 *	@param pwmAmount The PWM value to be set
 */
 void PCA9685::setChannelPWM(uint8_t channel, uint16_t pwmAmount) {
-    if (channel < 0 || channel > 15) return;
+    if (channel > 15) return;
 
     _wire->beginTransmission(_address);
     _wire->write(PCA9685_LED0_REG + (channel * 0x04));
@@ -113,7 +113,7 @@ void PCA9685::moveServoAngle(uint8_t channel, float angle) {
 *	@return PWM value is: 0 -> 4096 (0 full off / 4096 full on)
 */
 uint16_t PCA9685::getChannelPWM(uint8_t channel) {
-    if (channel < 0 || channel > 15) return 0;
+    if (channel > 15) return 0;
 
     byte regAddress = PCA9685_LED0_REG + (channel << 2);
 
